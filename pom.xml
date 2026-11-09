@@ -24,6 +24,8 @@
         <resilience4j.version>2.3.0</resilience4j.version>
         <google-cloud-pubsub.version>1.151.0</google-cloud-pubsub.version>
         <archunit.version>1.4.1</archunit.version>
+        <!-- Must match the Swagger version managed by the springdoc BOM. -->
+        <swagger.version>2.2.55</swagger.version>
     </properties>
 
     <dependencyManagement>
@@ -34,6 +36,25 @@
                 <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Spring AI 2.0.2 brings swagger-annotations-jakarta 2.2.38, which
+                 shadows the 2.2.55 required by springdoc 3.2.0. Import the
+                 springdoc BOM to force all Swagger artifacts to 2.2.55. -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-bom</artifactId>
+                <version>${springdoc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- openai-java-core brings the non-Jakarta swagger-annotations
+                 jar, which shadows springdoc's Jakarta annotations because
+                 both contain io.swagger.v3.oas.annotations. Keep both copies
+                 on the same version so Schema.$dynamicRef() always exists. -->
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations</artifactId>
+                <version>${swagger.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.resilience4j</groupId>
