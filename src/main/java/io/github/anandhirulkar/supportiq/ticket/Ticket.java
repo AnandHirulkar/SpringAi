@@ -22,7 +22,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import org.hibernate.annotations.BatchSize;
 
 /**
  * Aggregate root for support tickets. All state changes go through intention-revealing methods so
@@ -41,7 +40,6 @@ public class Ticket {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
-    @BatchSize(size = 50)
     private Customer customer;
 
     @Column(nullable = false, length = 200)
