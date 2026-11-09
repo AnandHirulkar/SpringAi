@@ -1,0 +1,155 @@
+spring:
+  application:
+    name: supportiq
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/supportiq?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${MYSQL_USERNAME:supportiq}
+    password: ${MYSQL_PASSWORD:supportiq}
+    hikari:
+      pool-name: mysql-pool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        default_batch_fetch_size: 50
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/supportiq}
+      auto-index-creation: false
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:demo-key-not-configured}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+          temperature: ${OPENAI_TEMPERATURE:0.2}
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+          dimensions: 1536
+    mcp:
+      server:
+        enabled: true
+        name: supportiq
+        version: 1.0.0
+        protocol: STREAMABLE
+        type: SYNC
+        instructions: >-
+          SupportIQ exposes customer-support tools. Use search_knowledge_base for documentation,
+          get_ticket and list_open_tickets for ticket lookups, and create_ticket only when the user
+          explicitly asks to open a ticket.
+        annotation-scanner:
+          enabled: true
+
+  # The vector store runs on its own PostgreSQL datasource (see VectorStoreConfig), so the
+  # auto-configuration that would bind pgvector to the MySQL datasource is disabled.
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:supportiq-local-development-secret-change-me-please}
+      issuer: supportiq
+      ttl: PT8H
+      # Local/demo convenience so Swagger can be used immediately. Disable in production.
+      dev-token-enabled: ${DEV_TOKEN_ENABLED:true}
+  vector-store:
+    url: ${PGVECTOR_URL:jdbc:postgresql://localhost:5432/supportiq}
+    username: ${PGVECTOR_USERNAME:supportiq}
+    password: ${PGVECTOR_PASSWORD:supportiq}
+    dimensions: 1536
+    index-type: HNSW
+    distance-type: COSINE_DISTANCE
+    initialize-schema: ${PGVECTOR_INIT_SCHEMA:true}
+    schema-name: public
+    table-name: vector_store
+  knowledge:
+    chunk-size: 1200
+    chunk-overlap: 200
+    search-top-k: 5
+    similarity-threshold: 0.5
+  assistant:
+    max-history-turns: 6
+    retry-attempts: 3
+    retry-backoff-millis: 500
+    circuit-breaker-wait-seconds: 30
+  messaging:
+    pubsub:
+      project-id: ${GCP_PROJECT_ID:}
+      topic: ${PUBSUB_TOPIC:supportiq-events}
+      push-token: ${PUBSUB_PUSH_TOKEN:}
+  mcp:
+    api-key: ${MCP_API_KEY:}
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        supportiq.ai.chat.latency: true
+
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"
+  level:
+    io.github.anandhirulkar.supportiq: INFO
+    org.springframework.ai: INFO
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true

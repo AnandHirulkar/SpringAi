@@ -1,0 +1,14 @@
+# Activates Google Cloud Pub/Sub as the messaging adapter (free tier: 10 GiB/month).
+# Authentication is taken from the environment - Workload Identity in GKE/Cloud Run,
+# or GOOGLE_APPLICATION_CREDENTIALS for a local service-account JSON file.
+# Never commit credentials.
+app:
+  messaging:
+    pubsub:
+      project-id: ${GCP_PROJECT_ID}
+      topic: ${PUBSUB_TOPIC:supportiq-events}
+      push-token: ${PUBSUB_PUSH_TOKEN}
+
+logging:
+  level:
+    com.google.cloud.pubsub: INFO

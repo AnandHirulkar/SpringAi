@@ -1,0 +1,85 @@
+name: supportiq
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: supportiq-mysql
+    environment:
+      MYSQL_DATABASE: supportiq
+      MYSQL_USER: supportiq
+      MYSQL_PASSWORD: supportiq
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-usupportiq", "-psupportiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  mongodb:
+    image: mongo:8.0
+    container_name: supportiq-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: supportiq-pgvector
+    environment:
+      POSTGRES_DB: supportiq
+      POSTGRES_USER: supportiq
+      POSTGRES_PASSWORD: supportiq
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportiq -d supportiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # Optional: run the API in containers too.
+  # docker compose --profile app up --build
+  app:
+    profiles: ["app"]
+    build: .
+    container_name: supportiq-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      pgvector:
+        condition: service_healthy
+    environment:
+      MYSQL_URL: jdbc:mysql://mysql:3306/supportiq?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      MYSQL_USERNAME: supportiq
+      MYSQL_PASSWORD: supportiq
+      MONGODB_URI: mongodb://mongodb:27017/supportiq
+      PGVECTOR_URL: jdbc:postgresql://pgvector:5432/supportiq
+      PGVECTOR_USERNAME: supportiq
+      PGVECTOR_PASSWORD: supportiq
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-demo-key-not-configured}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+      JWT_SECRET: ${JWT_SECRET:-supportiq-local-development-secret-change-me-please}
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
+  mongo-data:
+  pgvector-data:
